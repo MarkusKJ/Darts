@@ -26,8 +26,3 @@ func get_current_score() -> int:
 
 func reset_score():
 	current_score = 0
-
-
-func _body_entered_frame(body: RigidBody3D) -> void:
-	if body.is_in_group("darts"):
-		print(!"dart hits the frame")
