@@ -1,7 +1,9 @@
 extends RigidBody3D
 
-signal dartinit
+signal dart_miss
+signal dart_thrown
 
+@onready var dart_cams: Node3D = $DartCams
 @onready var hand_cam: Camera3D = $DartCams/HandCam
 @onready var dart_cam: Camera3D = $DartCams/CamSpring/DartCam
 @onready var reticle: CenterContainer = $DartUI/Reticle
@@ -31,6 +33,7 @@ func _ready():
 	#rotation init
 	target_rotation = rotation
 	current_rotation = rotation
+	
 
 func _input(event: InputEvent) -> void:
 	if has_been_shot:
@@ -78,6 +81,7 @@ func shoot():
 		var impulse = forward_direction * impulse_strength
 		apply_impulse(impulse)
 		has_been_shot = true
+		emit_signal("dart_thrown")
 
 func _integrate_forces(state):
 	if is_rotating and not has_been_shot:
@@ -89,7 +93,7 @@ func _on_body_entered(body: Node):
 		has_collided = true
 		if not body.is_in_group("dartboard_sectors"):
 			print("MISS")
-			queue_free()
+			emit_signal("dart_miss")
 		else:
 			pass
 
