@@ -1,7 +1,10 @@
 extends Node3D
 
 @onready var dartloader: ResourcePreloader = $Dartloader
+@onready var timer: Timer = $Timer
+
 @export var dartboard: Node3D
+
 const pos_y = Vector3(0, 30, 0)
 var dart_pos = Vector3.ZERO
 var max_darts: int = 3 
@@ -49,15 +52,19 @@ func replace_dart_with_mesh(dart: RigidBody3D):
 func on_dart_miss(missed_dart: RigidBody3D):
 	if missed_dart in active_darts:
 		active_darts.erase(missed_dart)
+		missed_dart.freeze = true
 		missed_dart.queue_free()
-	
 	if missed_dart == current_dart:
 		current_dart = null
 	
 	can_spawn_new_dart = true
+	spawn_new_dart()
 
 func on_dart_thrown():
 	can_spawn_new_dart = true
+	
+func dtimer():
+	pass
 
 func _physics_process(_delta):
 	if current_dart:
