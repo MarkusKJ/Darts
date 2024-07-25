@@ -1,4 +1,5 @@
 extends Node
+
 const SCORE_MAP = {
 	"double20": 40,
 	"double1": 2,

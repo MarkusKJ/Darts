@@ -12,7 +12,7 @@ signal dart_thrown
 @onready var dart_ui: CanvasLayer = $DartUI
 @onready var reticle: CenterContainer = $DartUI/Control/Reticle
 @onready var charge: ProgressBar = $DartUI/Control/Charge
-
+#MULTIPLAYER
 
 #DartVariables
 #rotation
@@ -44,53 +44,59 @@ func _ready():
 	
 
 func _input(event: InputEvent) -> void:
-	if has_been_shot:
-		return
-	
-	#rotating the dart
-	if event.is_action_pressed("leftmouse"):
-		is_rotating = true
-	elif event.is_action_released("leftmouse"):
-		is_rotating = false
-	if is_rotating and event is InputEventMouseMotion:
-		target_rotation.x -= event.relative.y * sensitivity
-		target_rotation.y -= event.relative.x * sensitivity
+	if Network.is_my_turn() and !has_been_shot:
 		
-		# Clamp the rotation
-		target_rotation.x = clamp(target_rotation.x, -max_rotation_x, max_rotation_x)
-		target_rotation.y = clamp(target_rotation.y, -max_rotation_y, max_rotation_y)
-	#charging the power of dart
-	if event.is_action_pressed("Shoot"):
-		print("charging")
-		charge.value = 0
-		charge.visible = true
-	if event.is_action_released("Shoot"):
-		print("shoot")
-		shoot()
-		reticle.visible = false
-		charge.visible = false
+		#rotating the dart
+		if event.is_action_pressed("leftmouse"):
+			is_rotating = true
+		elif event.is_action_released("leftmouse"):
+			is_rotating = false
+		if is_rotating and event is InputEventMouseMotion:
+			target_rotation.x -= event.relative.y * sensitivity
+			target_rotation.y -= event.relative.x * sensitivity
+			
+			# Clamp the rotation
+			target_rotation.x = clamp(target_rotation.x, -max_rotation_x, max_rotation_x)
+			target_rotation.y = clamp(target_rotation.y, -max_rotation_y, max_rotation_y)
+		#charging the power of dart
+		if event.is_action_pressed("Shoot"):
+			print("charging")
+			charge.value = 0
+			charge.visible = true
+		if event.is_action_released("Shoot"):
+			print("shoot")
+			shoot()
+			reticle.visible = false
+			charge.visible = false
+	else:
+		return
 		
 func _process(delta):
-	if not has_been_shot:
+	if Network.is_my_turn() and !has_been_shot:
 		# Smoothly interpolate current rotation towards target rotation
 		current_rotation = current_rotation.lerp(target_rotation, smoothness * delta)
 		
 		# Apply the smoothed rotation
 		rotation.x = current_rotation.x
 		rotation.y = current_rotation.y
+	else:
+		return
 #shooting the dart
 func shoot():
-	handmesh.queue_free()
-	dart_cam.current = true
-	freeze = false
-	var forward_direction = -global_transform.basis.z
-	var up_direction = global_transform.basis.y
-	var impulse_strength = charge.value * speed
-	var forward_impulse = forward_direction * impulse_strength
-	var up_impulse = up_direction * (impulse_strength * 0.2)  # Adjust the 0.2 factor to change the arc height
-	apply_impulse(forward_impulse + up_impulse)
-	has_been_shot = true
-	emit_signal("dart_thrown")
+	if Network.is_my_turn():
+		handmesh.queue_free()
+		dart_cam.current = true
+		freeze = false
+		var forward_direction = -global_transform.basis.z
+		var up_direction = global_transform.basis.y
+		var impulse_strength = charge.value * speed
+		var forward_impulse = forward_direction * impulse_strength
+		var up_impulse = up_direction * (impulse_strength * 0.2)  # Adjust the 0.2 factor to change the arc height
+		apply_impulse(forward_impulse + up_impulse)
+		has_been_shot = true
+		emit_signal("dart_thrown")
+	else:
+		print("Tried to shoot on !player turn")
 
 func _integrate_forces(state):
 	if is_rotating and not has_been_shot:
@@ -102,6 +108,8 @@ func _integrate_forces(state):
 			var cur_rotation = state.transform.basis
 			var interpolated_rotation = cur_rotation.slerp(aim_rotation, 0.005)  # Adjust the 0.1 factor to change rotation speed
 			state.transform.basis = interpolated_rotation
+	else:
+		return
 
 
 func _on_body_entered(body: Node):

@@ -19,7 +19,7 @@ func _ready():
 			sector_materials[sector.name] = initial_material
 
 	# Connect to the collision detection signal
-	var collision_node = get_parent_node_3d()  # Adjust path as needed
+	var collision_node = $'../..'  # Adjust path as needed
 	collision_node.connect("sector_hit", Callable(self, "_on_sector_hit"))
 
 func create_player_material(color: Color) -> StandardMaterial3D:
