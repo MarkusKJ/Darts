@@ -3,9 +3,7 @@ extends RigidBody3D
 signal dart_miss
 signal dart_thrown
 
-@onready var dart_cams: Node3D = $DartCams
-@onready var hand_cam: Camera3D = $DartCams/HandCam
-@onready var dart_cam: Camera3D = $DartCams/CamSpring/DartCam
+@onready var aim_cam: Camera3D = $AimCam
 @onready var dart_col: CollisionShape3D = $DartCol
 @onready var handmesh: StaticBody3D = $Hand
 #DARTUI
@@ -15,6 +13,7 @@ signal dart_thrown
 #MULTIPLAYER
 
 #DartVariables
+const dart_aim_posi = Vector3(1.231, 19.378, -7.115)
 #rotation
 var sensitivity: float = 0.01
 var smoothness: float = 30.0
@@ -31,7 +30,7 @@ var has_been_shot: bool = false
 var has_collided: bool = false
 
 func _ready():
-	hand_cam.current = true
+	#aim_cam.current = true
 	freeze = true
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	#rotation init
@@ -44,13 +43,15 @@ func _ready():
 	
 
 func _input(event: InputEvent) -> void:
-	if Network.is_my_turn() and !has_been_shot:
+	if !has_been_shot:
 		
 		#rotating the dart
 		if event.is_action_pressed("leftmouse"):
 			is_rotating = true
 		elif event.is_action_released("leftmouse"):
 			is_rotating = false
+		if event.is_action('rightmouse'):
+			aim_mode()
 		if is_rotating and event is InputEventMouseMotion:
 			target_rotation.x -= event.relative.y * sensitivity
 			target_rotation.y -= event.relative.x * sensitivity
@@ -72,7 +73,7 @@ func _input(event: InputEvent) -> void:
 		return
 		
 func _process(delta):
-	if Network.is_my_turn() and !has_been_shot:
+	if !has_been_shot:
 		# Smoothly interpolate current rotation towards target rotation
 		current_rotation = current_rotation.lerp(target_rotation, smoothness * delta)
 		
@@ -83,9 +84,9 @@ func _process(delta):
 		return
 #shooting the dart
 func shoot():
-	if Network.is_my_turn():
+	if !has_been_shot:
 		handmesh.queue_free()
-		dart_cam.current = true
+		#dart_cam.current = true
 		freeze = false
 		var forward_direction = -global_transform.basis.z
 		var up_direction = global_transform.basis.y
@@ -94,10 +95,20 @@ func shoot():
 		var up_impulse = up_direction * (impulse_strength * 0.2)  # Adjust the 0.2 factor to change the arc height
 		apply_impulse(forward_impulse + up_impulse)
 		has_been_shot = true
-		emit_signal("dart_thrown")
+		if charge.value >= 3:
+			print("charge more than 5",charge.value)
+			emit_signal("dart_thrown")
+		else:
+			print("dart power less than 5")
+			call_deferred('emit_signal','dart_miss')
 	else:
-		print("Tried to shoot on !player turn")
+		printerr("Something wrong with shoot")
 
+func aim_mode():
+	if !has_been_shot:
+		aim_cam.current = true
+		self.position = dart_aim_posi
+		
 func _integrate_forces(state):
 	if is_rotating and not has_been_shot:
 		state.angular_velocity = Vector3.ZERO

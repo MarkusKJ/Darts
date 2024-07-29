@@ -1,72 +1,47 @@
 extends Node3D
 
-@onready var dartspawner = $DartSpawner  # Assuming you have a DartSpawner node
-@onready var dartboard: Node3D = $dartboard
-
-#NetworkUI
-@onready var nsdisp: Label = $NetworkCanvas/CC/NetworkInfo/NetworkSideDisplay
-@onready var uniqpid: Label = $NetworkCanvas/CC/NetworkInfo/UniquePeerID
-@onready var menu: VBoxContainer = $NetworkCanvas/CC/Menu
-@onready var spawn: Button = $NetworkCanvas/CC/Menu/Spawn
+@onready var dartspawner = $DartSpawner
+@onready var dartboard = $dartboard
+@onready var main_menu: Control = $UICanvas/MainMenu
 
 
-var current_score = Network.current_score
+#var current_score: int = 0
+#var game_started: bool = false
 
 func _ready():
-	Network.game_state_updated.connect(self._on_game_state_updated)
-	Network.turn_changed.connect(self._on_turn_changed)
-	Network.game_over.connect(self._on_game_over)
-	# Connect to dartboard's signals
+	pass
+	"""hide_game_elements()
+	show_main_menu()
+	
+	# Connect dartboard signals
 	dartboard.connect("darthit", Callable(self, "_on_dart_hit"))
+	main_menu.connect("start_game", Callable(self, "start_game"))
 
-#-----------------------------------------------------
-#NETWORKUI
-func _on_host_pressed() -> void:
-	nsdisp.text = "Server"
-	#menu.visible = false
-	Network.start_server()
-	uniqpid.text = str(multiplayer.get_unique_id())
+func hide_game_elements():
+	dartspawner.visible = false
+	dartboard.visible = false
 
-func _on_join_pressed() -> void:
-	nsdisp.text = "Client"
-	#menu.visible = false
-	Network.start_client()
-	uniqpid.text = str(multiplayer.get_unique_id())
-	
-#-----------------------------------------------------
-	
+func show_main_menu():
+	main_menu.visible = true
 
-func _on_turn_changed(player_id: int):
-	if Network.is_my_turn():
-		print("It's your turn!")
-		dartspawner.spawn_new_dart()
-	else:
-		print("It's " + Network.players[player_id] + "'s turn")
-		
+func start_game():
+	game_started = true
+	hide_main_menu()
+	show_game_elements()
+	initialize_game_state()
 
-func enable_controls():
-	dartspawner.spawn_new_dart()
+func hide_main_menu():
+	main_menu.visible = false
 
+func show_game_elements():
+	dartspawner.visible = true
+	dartboard.visible = true
 
-func _on_game_state_updated():
-	# Update game objects based on new state
-	current_score = Network.current_score
-	# Update score display, etc.
-	
-func _on_game_over():
-	print("gameover")
+func _on_player_connected(id: int):
+	printraw("Player Connected:%",id)
 
-#Sketchy
-func _on_dart_hit(score: int, position: Vector3):
-	current_score += score
-	var dart_position = dartspawner.current_dart.global_transform.origin
-	Network.send_game_state.rpc(dart_position, current_score)
-	Network.end_turn.rpc()
-
-
-func _on_spawn_pressed() -> void:
-	dartspawner.spawn_new_dart()
-
-
-func _on_register_pressed() -> void:
-	Network.register_player("j")
+func initialize_game_state():
+	# Set up initial game state
+	printerr("DEBUG: Initializing game state")
+	pass
+"""

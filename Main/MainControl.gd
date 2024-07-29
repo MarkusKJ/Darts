@@ -25,7 +25,7 @@ func _on_start_pressed() -> void:
 
 func add_player(peer_id):
 	connected_peer_ids.append(peer_id)
-	var player = preload("res://Scripts/Main/player.tscn").instantiate()
+	var player = preload('res://Scenes/Main/Player.tscn').instantiate()
 	player.set_multiplayer_authority(peer_id)
 	add_child(player)
 
