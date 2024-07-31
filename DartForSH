@@ -1,0 +1,61 @@
+extends RigidBody3D
+
+@onready var mesh: MeshInstance3D = $dart_mesh
+@onready var dartcam: Camera3D = $Node/dartcam
+
+var throw_vector: Vector3
+var throw_power: float
+var can_throw: bool = true
+var initial_position: Vector3
+
+func _ready() -> void:
+	initial_position = self.global_position
+	self.freeze = true
+
+func set_throw_vector(direction: Vector3, power: float) -> void:
+	throw_vector = direction.normalized()
+	throw_power = power
+	
+	# Rotate self to face throw direction
+	if throw_vector.length_squared() > 0.001:
+		look_at(global_transform.origin + throw_vector, Vector3.UP)
+
+func throw_dart():
+	if can_throw:
+		self.freeze = false
+		
+		# Calculate the forward and up components of the throw
+		var forward_direction = throw_vector
+		var up_direction = Vector3.UP
+		
+		# Calculate the impulse
+		var impulse = forward_direction * throw_power * 20
+		
+		# Add an upward component to create an arc
+		impulse += up_direction * (throw_power * 5)  # Adjust the 5 factor to change the arc height
+		
+		# Apply the impulse
+		apply_impulse(impulse)
+		
+		dartcam.current = true
+		
+		
+func _integrate_forces(state):
+	if !can_throw:
+		state.angular_velocity = Vector3.ZERO
+		var velocity = state.linear_velocity
+		if velocity.length() > 0.1:  # Only rotate if the dart is moving
+			var aim_rotation = Basis.looking_at(velocity.normalized(), Vector3.UP)
+			var cur_rotation = state.transform.basis
+			var interpolated_rotation = cur_rotation.slerp(aim_rotation, 0.005)  # Adjust the 0.1 factor to change rotation speed
+			state.transform.basis = interpolated_rotation
+	else:
+		return
+
+func reset_dart():
+	if not can_throw:
+		self.freeze = true
+		self.global_position = initial_position
+		self.linear_velocity = Vector3.ZERO
+		self.angular_velocity = Vector3.ZERO
+
