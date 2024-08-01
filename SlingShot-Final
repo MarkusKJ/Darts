@@ -1,0 +1,111 @@
+extends Node3D
+
+@onready var dart: RigidBody3D = $dart
+@onready var aim_line: MeshInstance3D = $dart/AimLine
+@onready var power_indicator: ProgressBar = $CanvasLayer/PowerIndicator
+@onready var ta_powerhorizon: Control = $CanvasLayer/TouchAreaPowerHorizontal
+@onready var ta_vertical_x: Control = $CanvasLayer/TouchAreaVertical
+
+var max_rotation_y = deg_to_rad(90)
+var max_rotation_x = deg_to_rad(45)
+
+var initial_touch_position: Vector2
+var is_aiming: bool = false
+var current_touch_index: int = -1
+
+var current_drag_vector: Vector2 = Vector2.ZERO
+var current_vertical_drag: float = 0
+var aim_direction: Vector3 = Vector3.ZERO
+var throw_power: float = 0
+
+var desired_rotation = Vector3.ZERO
+
+func _ready() -> void:
+	aim_line.visible = false
+	power_indicator.visible = false
+	ta_powerhorizon.gui_input.connect(_on_ta_powerhorizon_input)
+	ta_vertical_x.gui_input.connect(_on_ta_vertical_x_input)
+
+func _process(delta: float) -> void:
+	if is_aiming:
+		_update_aim(delta)
+		_handle_keyboard_vertical_input(delta)
+
+func _on_ta_powerhorizon_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		if event.pressed and not is_aiming:
+			_start_aiming(event)
+		elif not event.pressed and is_aiming and event.index == current_touch_index:
+			_release_dart()
+	elif event is InputEventScreenDrag and is_aiming and event.index == current_touch_index:
+		current_drag_vector = event.position - initial_touch_position
+
+func _on_ta_vertical_x_input(event: InputEvent) -> void:
+	if event is InputEventScreenDrag:
+		current_vertical_drag = event.relative.y * 0.5  # Adjust sensitivity as needed
+
+func _start_aiming(event: InputEventScreenTouch) -> void:
+	initial_touch_position = event.position
+	current_touch_index = event.index
+	is_aiming = true
+	aim_line.visible = true
+	power_indicator.visible = true
+
+func _update_aim(delta: float) -> void:
+	_update_aim_direction()
+	_update_dart_rotation(delta)
+	_update_aim_line()
+	_update_throw_power()
+
+func _update_aim_direction() -> void:
+	aim_direction = Vector3(current_drag_vector.x, 0, current_drag_vector.y)
+	if aim_direction.length_squared() > 0.001:
+		aim_direction = aim_direction.normalized()
+
+func _update_dart_rotation(delta: float) -> void:
+	var rotation_amount = deg_to_rad(current_vertical_drag) * delta
+	desired_rotation.x += rotation_amount
+	desired_rotation.x = clamp(desired_rotation.x, -max_rotation_x, max_rotation_x)
+
+	var y_rotation = atan2(aim_direction.x, aim_direction.z)
+	dart.rotation = Vector3(desired_rotation.x, -y_rotation, 0)
+
+
+func _update_aim_line() -> void:
+	if aim_direction.length_squared() > 0.001:
+		aim_line.global_position = dart.global_position
+		var aim_basis = Basis(Vector3.UP, atan2(-aim_direction.x, -aim_direction.z))
+		aim_basis = aim_basis.rotated(Vector3.RIGHT, dart.rotation.x)
+		aim_line.global_transform.basis = aim_basis
+		aim_line.rotate_object_local(Vector3.RIGHT, PI/2)
+		var aim_length = clamp(current_drag_vector.length() / 100, 2, 10)
+		aim_line.scale = Vector3(2, aim_length, 2)
+
+func _update_throw_power() -> void:
+	throw_power = clamp(current_drag_vector.length() / 500, 0, 1)
+	var throw_direction = -aim_direction.rotated(Vector3.RIGHT, dart.rotation.x)
+	dart.set_throw_vector(throw_direction, throw_power)
+	power_indicator.value = throw_power * 100
+
+func _release_dart() -> void:
+	dart.throw_dart()
+	aim_line.visible = false
+	power_indicator.visible = false
+	is_aiming = false
+	current_touch_index = -1
+	current_drag_vector = Vector2.ZERO
+	current_vertical_drag = 0
+
+func _handle_keyboard_vertical_input(delta: float) -> void:
+	var rotation_amount = 0
+	if Input.is_action_pressed("Up"):
+		rotation_amount = -1
+	elif Input.is_action_pressed("Down"):
+		rotation_amount = 1
+	
+	if rotation_amount != 0:
+		current_vertical_drag += rotation_amount * delta * 100  # Adjust this value for rotation speed
+		current_vertical_drag = clamp(current_vertical_drag, -rad_to_deg(max_rotation_x), rad_to_deg(max_rotation_x))
+	else:
+		# Gradually return current_vertical_drag to 0 when no key is pressed
+		current_vertical_drag = move_toward(current_vertical_drag, 0, delta * 200)  # Adjust 200 for return speed
